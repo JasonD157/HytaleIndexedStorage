@@ -133,4 +133,4 @@ $RECYCLE.BIN/
 _NCrunch*
 
 # Target regions for testing
-target/
+*.region.bin
