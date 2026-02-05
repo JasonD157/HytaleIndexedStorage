@@ -1,5 +1,3 @@
-namespace Main;
-
 using static System.Diagnostics.Debug;
 using System.IO;
 using System.Reflection;
@@ -7,6 +5,7 @@ using System.Text;
 using RegionFileLib;
 using ChunkLib;
 
+namespace Main;
 class Program
 {
 	static void Main(string[]? args)

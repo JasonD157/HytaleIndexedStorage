@@ -24,18 +24,23 @@ class RegionFileUtil
 	}
 }
 
-struct Pos
+class Pos
 {
-	int x;
-	int z;
+	public int x;
+	public int z;
 
 	public Pos(int x, int z) { this.x = x; this.z = z; }
+
+	public Pos Add(Pos pos1, Pos pos2)
+	{
+		return new Pos(pos1.x + pos2.x, pos1.z + pos2.z);
+	}
 }
 
 struct Region
 {
-	Pos firstPos;
-	Pos secondPos;
+	public Pos firstPos;
+	public Pos secondPos;
 
 	public Region(Pos first, Pos second) { this.firstPos = first; this.secondPos = second; }
 }
@@ -159,7 +164,7 @@ class RegionFile
 		for (int i = 0; i < BLOB_COUNT; i++)
 		{
 			Segment segment = rawSegments[i];
-			chunks[i] = new Chunk(segment, i);
+			chunks[i] = new Chunk(segment, this.chunkRegion, i);
 		}
 
 		this.chunks = chunks;
