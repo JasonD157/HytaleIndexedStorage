@@ -102,8 +102,18 @@ HytaleIndexedStorageAnalyzer.exe /path/to/region/files
 ## 📤 Output
 
 * Corruption findings are printed to the console.
+
+  <img width="552" height="106" alt="image" src="https://github.com/user-attachments/assets/6fbcee27-c92c-47f2-927a-df644f349979" />
 * A map of each region.bin file, with mapped segments.
-* Statistics of each regionfile: empty/corrupted/normal chunks.
+
+  <img width="466" height="344" alt="image" src="https://github.com/user-attachments/assets/aaa8da54-a493-4bfc-ad6d-d18f3b0e0559" />
+* Combined statistics of every analyzed regionfile: empty/corrupted/normal chunks.
+
+  <img width="237" height="68" alt="image" src="https://github.com/user-attachments/assets/15014412-2779-44c5-a9a0-e1618c46f615" />
+
+
+
+
 
 ## 📜 License
 
