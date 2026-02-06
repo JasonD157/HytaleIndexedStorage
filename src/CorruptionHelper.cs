@@ -5,10 +5,12 @@ namespace Corruption;
 
 enum ReservationType
 {
-	EMPTY,
-	SEGMENT,
-	REGION_HEADER,
-	PAGE_CHUNK_FILLER,
+	EMPTY,					//No data, if this is present in the final dump a corrupted region lives there.
+	SEGMENT,				//Chunk data
+	REGION_HEADER,			//Header of the region file
+	PAGE_CHUNK_FILLER,		//Hytale stores segments in BLOB_SIZES, currently 4096 bytes. As such Segments have padding.
+	CORRUPT_IDX_SEGMENT, 	//Broken blob_index
+	CORRUPT_HDR_SEGMENT, 	//Broken Zstd header
 }
 
 struct ByteSpace
@@ -109,7 +111,7 @@ class CorruptionHelper
 		MarkAsType(segmentByteSpace);
 
 		var rest = (length - 1) % SEGMENT_SIZE;
-		if (rest != 0 && type == ReservationType.SEGMENT)
+		if (rest != 0 && (type == ReservationType.SEGMENT || type == ReservationType.CORRUPT_IDX_SEGMENT))
 		{
 			ByteSpace pageFillerByteSpace = new ByteSpace(firstByte + length, firstByte + length - 1 + (SEGMENT_SIZE - rest - 1), ReservationType.PAGE_CHUNK_FILLER, index);
 			MarkAsType(pageFillerByteSpace);
@@ -130,14 +132,17 @@ class CorruptionHelper
 			if (curr.type == ReservationType.EMPTY) Console.ForegroundColor = ConsoleColor.Yellow;
 			if (curr.type == ReservationType.SEGMENT) Console.ForegroundColor = ConsoleColor.Green;
 			if (curr.type == ReservationType.REGION_HEADER) Console.ForegroundColor = ConsoleColor.Magenta;
-			if (curr.type == ReservationType.PAGE_CHUNK_FILLER) Console.ForegroundColor = ConsoleColor.DarkGreen;
+			if (curr.type == ReservationType.PAGE_CHUNK_FILLER) Console.ForegroundColor = ConsoleColor.Black;
+			if (curr.type == ReservationType.CORRUPT_IDX_SEGMENT) Console.ForegroundColor = ConsoleColor.DarkMagenta;
+			if (curr.type == ReservationType.CORRUPT_HDR_SEGMENT) Console.ForegroundColor = ConsoleColor.DarkRed;
 			Console.WriteLine(curr);
 			Console.ForegroundColor = ConsoleColor.White;
 		}
 	}
 
-	public void IdentifyCorruptIndexes(uint[] validIndexes)
+	public void IdentifyCorruptIndexes(uint[] validIndexes, bool finalPass=false)
 	{
+		bool byteSpacesWasUpdated = false;
 		foreach (ByteSpace curr in this.byteSpaces)
 		{
 			if (curr.type != ReservationType.EMPTY) continue;
@@ -150,13 +155,24 @@ class CorruptionHelper
 			{
 				_r.BaseStream.Seek((long)curr.firstByte, SeekOrigin.Begin);
 				Segment trySeg = new Segment(_r);
-				Console.WriteLine($"Identified index: {fixedIndex} Length: {trySeg.COMPRESSED_LENGTH}");
+				//Console.WriteLine($"Identified index: {fixedIndex} Length: {trySeg.COMPRESSED_LENGTH}");
+				RegisterFileSpace(curr.firstByte, trySeg.COMPRESSED_LENGTH, (uint)fixedIndex, ReservationType.CORRUPT_IDX_SEGMENT);
+				byteSpacesWasUpdated = true;
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine($":( {String.Join(",", _r.ReadBytes(4))} {e}");
+				//Console.WriteLine($":( {String.Join(",", _r.ReadBytes(4))} {e}");
+				if (finalPass) //Only insert on final pass to prevent accidently corrupting a region ourselves by marking it as corrupted while it isn't
+				{
+					RegisterFileSpace(curr.firstByte, 1, (uint)fixedIndex, ReservationType.CORRUPT_HDR_SEGMENT);
+				}
 				//TODO: read Zstd header and determine if header is recoverable
 			}
 		}
+
+		//Recursion so chained corrupt IDX_Segments get identified
+		//TODO: make this more optimized
+		if (byteSpacesWasUpdated) IdentifyCorruptIndexes(validIndexes);
+		if (!finalPass && !byteSpacesWasUpdated) IdentifyCorruptIndexes(validIndexes, true);
 	}
 }

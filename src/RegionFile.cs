@@ -121,8 +121,8 @@ class RegionFile
 		}
 
 		this.rawSegments = segments;
-		_corruptionHelper.PrintByteSpaces();
 		_corruptionHelper.IdentifyCorruptIndexes(validIndexes);
+		_corruptionHelper.PrintByteSpaces();
 	}
 
 	private (bool, Segment) ReadBlob(uint index)
