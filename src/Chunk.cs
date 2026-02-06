@@ -1,5 +1,7 @@
 using RegionFileLib;
 using SegmentLib;
+using Globals;
+using static Globals.Globals;
 
 namespace ChunkLib;
 
@@ -7,10 +9,11 @@ class Chunk
 {
 	public bool IS_EMPTY = false;
 	public bool IS_CORRUPTED = false;
+	
 
-	Segment homeSegment;
-	Pos chunkPos;
-	Region chunkRegion;
+	public Segment homeSegment;
+	public Pos chunkPos;
+	public Region chunkRegion;
 		
 	public Chunk(Segment homeSegment, Region homeRegion, int chunkNum)
 	{
@@ -34,10 +37,10 @@ class Chunk
 	{
 		Pos basePos = homeRegion.firstPos;
 
-		int x = chunkNum % 31;
-		int y = chunkNum / 32; //Integer division is implicit
+		int x = chunkNum % 31; //Column
+		int z = chunkNum & 31; //Row
 
-		Console.WriteLine($"{x} {y}");
-
+		this.chunkPos = basePos + new Pos(x * CHUNK_SIZE, z * CHUNK_SIZE);
+		this.chunkRegion = new Region(this.chunkPos, this.chunkPos + new Pos(CHUNK_SIZE, CHUNK_SIZE));
 	}
 }

@@ -1,9 +1,9 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Bson;
-using static BinUtil.BinHelper;
-using static System.Diagnostics.Debug;
-using Zstandard.Net;
 using Newtonsoft.Json.Linq;
+using Zstandard.Net;
+using static BinUtil.BinHelper;
+using static Globals.Globals;
 
 namespace SegmentLib;
 
@@ -44,6 +44,9 @@ class Segment
 		this.SOURCE_LENGTH = BE(r.ReadUInt32());
 		this.COMPRESSED_LENGTH = BE(r.ReadUInt32());
 
+		if (COMPRESSED_LENGTH > MAX_INT)
+			//TODO: figure out if this is a valid exception (can segments be bigger than MAX_INT without corruption?)
+			throw new InvalidDataException("Compressed Length cannot be bigger than int limit."); 
 		if (SOURCE_LENGTH < COMPRESSED_LENGTH)
 			throw new InvalidDataException("Compressed Length cannot be greater than Source Length.");
 		if (r.BaseStream.Position + COMPRESSED_LENGTH > r.BaseStream.Length)
@@ -53,17 +56,26 @@ class Segment
 	private void ReadContents()
 	{
 		byte[] compressedData = r.ReadBytes((int)COMPRESSED_LENGTH);
-		using (var memoryStream = new MemoryStream(compressedData))
-		using (var compressionStream = new ZstandardStream(memoryStream, System.IO.Compression.CompressionMode.Decompress))
-		using (var temp = new MemoryStream())
+
+		try
 		{
-			compressionStream.CopyTo(temp);
-			this.uncompressedData = temp.ToArray();
+			using (var memoryStream = new MemoryStream(compressedData))
+			using (var compressionStream = new ZstandardStream(memoryStream, System.IO.Compression.CompressionMode.Decompress))
+			using (var temp = new MemoryStream())
+			{
+				compressionStream.CopyTo(temp);
+				this.uncompressedData = temp.ToArray();
+			}
 		}
+		catch (Exception e)
+		{
+			throw new InvalidDataException(e.Message, e.InnerException);
+		}
+
 
 		if (SOURCE_LENGTH != uncompressedData.Length)
 			throw new InvalidDataException("Expected and gotten Uncompressed Sizes do not match.");
-	}
+		}
 
 	private void ConvertContentsToBson()
 	{

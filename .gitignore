@@ -134,3 +134,6 @@ _NCrunch*
 
 # Target regions for testing
 *.region.bin
+
+# JsonDumps for testing
+*.temp.json

@@ -1,9 +1,6 @@
-using static System.Diagnostics.Debug;
-using System.IO;
-using System.Reflection;
-using System.Text;
 using RegionFileLib;
 using ChunkLib;
+using Globals;
 
 namespace Main;
 class Program
@@ -51,15 +48,21 @@ class Program
 		int empty = 0;
 		int corrupted = 0;
 		int filled = 0;
+		List<string> affectedRegions = new List<string>();
 		foreach (RegionFile regionFile in regionFiles)
 		{
-			empty += regionFile.emptyChunks;
-			corrupted += regionFile.corruptedChunks;
-			filled += regionFile.filledChunks;
+			ChunkHealth h = regionFile.chunkHealth;
+
+			if (h.corruptedChunks > 0) affectedRegions.Add(regionFile.fileName);
+
+			empty += h.emptyChunks;
+			corrupted += h.corruptedChunks;
+			filled += h.filledChunks;
 		}
 
 		Console.WriteLine($"Empty chunks: {empty}");
 		Console.WriteLine($"Corrupted chunks: {corrupted}");
 		Console.WriteLine($"Filled (normal) chunks: {filled}");
+		Console.WriteLine($"Corrupted regions: {string.Join(",", affectedRegions)}");
 	}
 }
