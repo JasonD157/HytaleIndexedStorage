@@ -121,8 +121,10 @@ class RegionFile
 		}
 
 		this.rawSegments = segments;
-		_corruptionHelper.IdentifyCorruptIndexes(validIndexes);
+		Dictionary<uint, Segment> corrIndexes = _corruptionHelper.IdentifyCorruptedSegments();
 		_corruptionHelper.PrintByteSpaces();
+		Console.WriteLine(corrIndexes.Count);
+		Console.WriteLine(String.Join(", ", corrIndexes.Keys));
 	}
 
 	private (bool, Segment) ReadBlob(uint index)
