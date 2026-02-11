@@ -27,6 +27,8 @@ class Segment
 			ReadHeader();
 			ReadContents();
 			ConvertContentsToBson();
+			//We don't save the BSON results due to stack size constraints on large world files.
+			//GetBSON() generates the BSON again when necessary.
 		}
 		else if (IS_EMPTY)
 		{
@@ -77,7 +79,7 @@ class Segment
 			throw new InvalidDataException("Expected and gotten Uncompressed Sizes do not match.");
 		}
 
-	private void ConvertContentsToBson()
+	private JObject ConvertContentsToBson()
 	{
 		var serializer = JsonSerializer.CreateDefault();
 		using (var memoryStream = new MemoryStream(uncompressedData))
@@ -90,7 +92,14 @@ class Segment
 			if (jObject.GetValue("Components") is null)
 				throw new InvalidDataException("Parsed BSON does not contain Chunk[Components].");
 
-			this.JSONObj = jObject;
+			return jObject;
 		}
+	}
+
+	public JObject GetBSON()
+	{
+		if (JSONObj is null) JSONObj = ConvertContentsToBson();
+
+		return JSONObj;
 	}
 }

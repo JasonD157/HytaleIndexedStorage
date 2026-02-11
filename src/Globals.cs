@@ -5,11 +5,11 @@ public static class Globals
 	public const int REGION_SIZE = 32; //A regionfile is 32x32 chunks
 	public const int CHUNK_SIZE = 32; //A chunk is 32x32 blocks
 	public const int REGION_LENGTH = REGION_SIZE * CHUNK_SIZE; //A regionfile is x blocks long.
-	public const int MAX_INT = 2147483647;
+	public const int MAX_INT = int.MaxValue;
 
 	//Sizes/bases in bytes
 	public const uint REGION_HEADER_SIZE = 32;
-	public const uint COMPRESSED_HEADER_SIZE = 8;
+	public const uint SEGMENT_HEADER_SIZE = 8;
 
 	public const uint MAGIC_SIZE = 20;
 	//Magic string prepended to every region.bin file.

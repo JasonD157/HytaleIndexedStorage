@@ -124,29 +124,34 @@ class RegionFile
 		Dictionary<uint, Segment> corrIndexes = _corruptionHelper.IdentifyCorruptedSegments();
 		_corruptionHelper.PrintByteSpaces();
 		Console.WriteLine(corrIndexes.Count);
-		Console.WriteLine(String.Join(", ", corrIndexes.Keys));
 	}
 
 	private (bool, Segment) ReadBlob(uint index)
 	{
 		ulong SEGMENT_POS = (ulong)_SEGMENT_BASE + (index - 1) * _SEGMENT_SIZE;
 
-		try
+		if (IsValidSegmentHeader(_r, SEGMENT_POS)) //Check if the header is intact (prevents computationally expensive try-catch)
 		{
-			_r.BaseStream.Seek((long)SEGMENT_POS, SeekOrigin.Begin);
-			Segment newSegment = new Segment(_r);
-			_corruptionHelper.RegisterFileSpace(SEGMENT_POS, COMPRESSED_HEADER_SIZE + newSegment.COMPRESSED_LENGTH, index);
-			return (true, newSegment);
+			try
+			{
+				_r.BaseStream.Seek((long)SEGMENT_POS, SeekOrigin.Begin);
+				Segment newSegment = new Segment(_r);
+				_corruptionHelper.RegisterFileSpace(SEGMENT_POS, SEGMENT_HEADER_SIZE + newSegment.COMPRESSED_LENGTH, index);
+				return (true, newSegment);
+			}
+			catch (InvalidDataException e) //Chunk corruption
+			{
+				Console.WriteLine($"[WARNING]:\tChunk at index {index} in regionfile {fileName} is corrupted!\n\t\t({e.Message})");
+				return (false, new Segment(null, IS_EMPTY: true, IS_CORRUPTED: true));
+			}
+			catch (Exception e) //Unexpected Exception type (probs from _corruptionHelper)
+			{
+				throw new Exception(e.StackTrace);
+			}
 		}
-		catch (InvalidDataException e) //Chunk corruption
-		{
-			Console.WriteLine($"[WARNING]:\tChunk at index {index} in regionfile {fileName} is corrupted!\n\t\t({e.Message})");
-			return (false, new Segment(null, IS_EMPTY: true, IS_CORRUPTED: true));
-		}
-		catch (Exception e) //Unexpected Exception type (probs from _corruptionHelper)
-		{
-			throw new Exception(e.StackTrace);
-		}
+
+		Console.WriteLine($"[WARNING]:\tChunk at index {index} in regionfile {fileName} is corrupted!\n\t\t(Corrupted Header)");
+		return (false, new Segment(null, IS_EMPTY: true, IS_CORRUPTED: true));
 	}
 
 	private void ConvertBlobsToChunks()
@@ -157,8 +162,8 @@ class RegionFile
 			Segment segment = rawSegments[i];
 			chunks[i] = new Chunk(segment, this.chunkRegion, i);
 
-			string json = JsonConvert.SerializeObject(segment.JSONObj);
-			File.WriteAllText($"../../../jsondump/jsondump_{regionPos.x}_{regionPos.z}_{chunks[i].chunkPos.x}_{chunks[i].chunkPos.z}.temp.json", json);
+			//string json = JsonConvert.SerializeObject(segment.JSONObj);
+			//File.WriteAllText($"../../../jsondump/jsondump_{regionPos.x}_{regionPos.z}_{chunks[i].chunkPos.x}_{chunks[i].chunkPos.z}.temp.json", json);
 		}
 
 		this.chunks = chunks;

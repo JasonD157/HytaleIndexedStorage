@@ -1,16 +1,18 @@
-using System.Drawing;
 using SegmentLib;
+using static BinUtil.BinHelper;
+using static Globals.Globals;
 
 namespace Corruption;
 
 enum ReservationType
 {
-	EMPTY,					//No data, if this is present in the final dump a corrupted region lives there.
-	SEGMENT,				//Chunk data
-	REGION_HEADER,			//Header of the region file
-	PAGE_CHUNK_FILLER,		//Hytale stores segments in BLOB_SIZES, currently 4096 bytes. As such Segments have padding.
-	CORRUPT_IDX_SEGMENT, 	//Broken blob_index
-	CORRUPT_HDR_SEGMENT, 	//Broken Zstd header
+	EMPTY,                  //No data, if this is present in the final dump a corrupted region lives there.
+	SEGMENT,                //Chunk data
+	REGION_HEADER,          //Header of the region file
+	PAGE_CHUNK_FILLER,      //Hytale stores segments in BLOB_SIZES, currently 4096 bytes. As such Segments have padding.
+	CORRUPT_IDX_SEGMENT,    //Broken blob_index
+	CORRUPT_HDR_SEGMENT,	//Broken segment header
+	CORRUPT_ZHDR_SEGMENT,   //Broken Zstd header
 }
 
 struct ByteSpace
@@ -40,6 +42,7 @@ class CorruptionHelper
 {
 	protected BinaryReader _r;
 	private List<ByteSpace> byteSpaces;
+	private ulong maxLength;
 	private uint SEGMENT_SIZE;
 	private uint SEGMENT_BASE;
 
@@ -47,6 +50,7 @@ class CorruptionHelper
 	{
 		this._r = reader;
 		this.byteSpaces = new List<ByteSpace> { new ByteSpace(0, byteSpaceLength - 1, ReservationType.EMPTY) };
+		this.maxLength = byteSpaceLength - 1;
 		this.SEGMENT_SIZE = SEGMENT_SIZE;
 		this.SEGMENT_BASE = SEGMENT_BASE;
 
@@ -55,82 +59,53 @@ class CorruptionHelper
 
 	private void MarkAsType(ByteSpace newB)
 	{
-		List<ByteSpace> newByteSpaces = new();
-		//Console.WriteLine($"DebugSegment: {segment}");
-
-		foreach (ByteSpace currB in this.byteSpaces)
+		ByteSpace match = byteSpaces.Find(b => b.firstByte <= newB.firstByte && b.lastByte >= newB.lastByte && b.type == ReservationType.EMPTY);
+		if (match.Equals(default(ByteSpace)))
 		{
-			//Console.WriteLine($"DebugCurr: {curr}");
-			ReservationType currType = currB.type;
-			ReservationType newType = newB.type;
+			//Outside of file
+			if (newB.lastByte > maxLength) return;
 
-			if (newB.Equals(currB)) continue; //Index Corruption causing double assignment TODO: handle properly
-			
-			if (currB.firstByte <= newB.firstByte && currB.lastByte >= newB.lastByte) //Bytespace is within
-			{
-				if (currType != ReservationType.EMPTY) { Console.WriteLine(currB); Console.WriteLine(newB); throw new Exception("Tried to double-assign"); }
+			//Double-assign due to corrupted indexes (index table contains a duplicate entry)
+			if (!byteSpaces.Find(b => b.Equals(newB)).Equals(default(ByteSpace))) return;
 
-				newByteSpaces.Add(newB);
-
-				if (currB.firstByte == newB.firstByte && currB.lastByte == newB.lastByte)
-				{
-					continue;
-				}
-				else if (currB.firstByte == newB.firstByte)
-				{
-					newByteSpaces.Add(new ByteSpace(newB.lastByte + 1, currB.lastByte, ReservationType.EMPTY));
-				}
-				else if (currB.lastByte == newB.lastByte)
-				{
-					newByteSpaces.Add(new ByteSpace(currB.firstByte, newB.firstByte - 1, ReservationType.EMPTY));
-				}
-				else
-				{
-					newByteSpaces.Add(new ByteSpace(currB.firstByte, newB.firstByte - 1, ReservationType.EMPTY));
-					newByteSpaces.Add(new ByteSpace(newB.lastByte + 1, currB.lastByte, ReservationType.EMPTY));
-				}
-			}
-			else if (currB.firstByte <= newB.firstByte && currB.lastByte >= newB.firstByte) //Bytespace reaches outside current but starts in it from the left
-			{
-				if (currType != ReservationType.EMPTY) { Console.WriteLine(currB); Console.WriteLine(newB); throw new Exception("Tried to double-assign"); }
-
-				if (currB.firstByte != newB.firstByte)
-				{
-					newByteSpaces.Add(new ByteSpace(currB.firstByte, newB.firstByte - 1, ReservationType.EMPTY));
-				}
-				newByteSpaces.Add(new ByteSpace(newB.firstByte, currB.lastByte, newType, newB.debugIndex));
-			}
-			else if (currB.firstByte <= newB.lastByte && currB.lastByte >= newB.lastByte) //Bytespace reaches outside current but starts in it from the right
-			{
-				if (currType != ReservationType.EMPTY) { Console.WriteLine(currB); Console.WriteLine(newB); throw new Exception("Tried to double-assign"); }
-
-				if (newB.lastByte != currB.lastByte)
-				{
-					newByteSpaces.Add(new ByteSpace(newB.lastByte + 1, currB.lastByte, ReservationType.EMPTY));
-				}
-				newByteSpaces.Add(new ByteSpace(currB.firstByte, newB.lastByte, newType, newB.debugIndex));
-			}
-			else //Bytespace reaches completely outside current
-			{
-				newByteSpaces.Add(currB);
-			}
+			//Print debug info
+			SortByteSpaces();
+			Console.WriteLine(string.Join(",\n", byteSpaces));
+			Console.WriteLine($"Curr: {newB}");
+			throw new Exception("help");
 		}
 
-		this.byteSpaces = newByteSpaces;
+		byteSpaces.Remove(match);
+		byteSpaces.Add(newB);
+
+		if (match.firstByte < newB.firstByte)
+		{
+			byteSpaces.Add(new ByteSpace(match.firstByte, newB.firstByte - 1, match.type, match.debugIndex));
+		}
+
+		if (match.lastByte > newB.lastByte)
+		{
+			byteSpaces.Add(new ByteSpace(newB.lastByte + 1, match.lastByte, match.type, match.debugIndex));
+		}
 	}
 
-	public void RegisterFileSpace(ulong firstByte, ulong length, uint index = 0, ReservationType type = ReservationType.SEGMENT)
+	public ulong RegisterFileSpace(ulong firstByte, ulong length, uint index = 0, ReservationType type = ReservationType.SEGMENT)
 	{
 		ByteSpace segmentByteSpace = new ByteSpace(firstByte, firstByte + length - 1, type, index);
 		MarkAsType(segmentByteSpace);
 
 		//As segments are stored in SEGMENT_SIZE "pages" they have padding.
-		var rest = (length - 1) % SEGMENT_SIZE;
-		if (rest != 0 && (type == ReservationType.SEGMENT || type == ReservationType.CORRUPT_IDX_SEGMENT))
+		var rest = length % SEGMENT_SIZE;
+		ulong fillerLastByte = firstByte + length - 1 + 1 + (SEGMENT_SIZE - rest - 1);
+		if (rest != 0 && (type == ReservationType.SEGMENT || type == ReservationType.CORRUPT_IDX_SEGMENT) && fillerLastByte <= maxLength)
 		{
-			ByteSpace pageFillerByteSpace = new ByteSpace(firstByte + length, firstByte + length - 1 + (SEGMENT_SIZE - rest - 1), ReservationType.PAGE_CHUNK_FILLER, index);
+			ByteSpace pageFillerByteSpace = new ByteSpace(firstByte + length - 1 + 1, fillerLastByte, ReservationType.PAGE_CHUNK_FILLER, index);
 			MarkAsType(pageFillerByteSpace);
+
+			return length - 1 + 1 + (SEGMENT_SIZE - rest - 1);
 		}
+
+		return length - 1;
 	}
 
 	private void SortByteSpaces()
@@ -162,36 +137,56 @@ class CorruptionHelper
 		}
 	}
 
-	private bool TryRecover(ulong startByte, Dictionary<uint, Segment> validIndexes, bool isFinalPass)
+	private bool TryRecover(ByteSpace curr, Dictionary<uint, Segment> validIndexes, bool isFinalPass)
 	{
-		ulong fixedIndex = (startByte - SEGMENT_BASE) / SEGMENT_SIZE + 1;
-
-		try
+		ulong startByte = curr.firstByte;
+		while (IsValidSegmentHeader(_r, startByte) && startByte <= curr.lastByte)
 		{
+			ulong fixedIndex = (startByte - SEGMENT_BASE) / SEGMENT_SIZE + 1;
+			Segment trySeg;
 			_r.BaseStream.Seek((long)startByte, SeekOrigin.Begin);
-			Segment trySeg = new Segment(_r);
-			RegisterFileSpace(startByte, trySeg.COMPRESSED_LENGTH, (uint)fixedIndex, ReservationType.CORRUPT_IDX_SEGMENT);
+			try
+			{
+				trySeg = new Segment(_r);
+			}
+			catch
+			{
+				//TODO: read Zstd header and determine if header is recoverable
+				ulong zHeaderSeg = RegisterFileSpace(startByte, SEGMENT_SIZE, (uint)fixedIndex, ReservationType.CORRUPT_ZHDR_SEGMENT);
+				startByte += zHeaderSeg + 1;
+				continue;
+			}
+
+			ulong bytesClaimed = RegisterFileSpace(startByte, trySeg.COMPRESSED_LENGTH, (uint)fixedIndex, ReservationType.CORRUPT_IDX_SEGMENT); //Padding incl.
 			validIndexes.Add((uint)fixedIndex, trySeg);
-			return true;
+			startByte += bytesClaimed + 1;
 		}
-		catch
-		{
-			return false;
-			//TODO: read Zstd header and determine if header is recoverable
-		}
+
+		return true;
 	}
 
 	public bool AssignCorruptedHeaders()
 	{
 		bool assignedHeaders = false;
-		foreach (ByteSpace curr in this.byteSpaces)
+		foreach (ByteSpace curr in new List<ByteSpace>(byteSpaces.FindAll(b => b.type == ReservationType.EMPTY)))
 		{
-			if (curr.type != ReservationType.EMPTY) continue;
 			if (curr.firstByte > long.MaxValue) throw new Exception("Number too big");
+			ulong currByte = curr.firstByte;
 
-			ulong fixedIndex = (curr.firstByte - SEGMENT_BASE) / SEGMENT_SIZE + 1;
-			RegisterFileSpace(curr.firstByte, SEGMENT_SIZE, (uint)fixedIndex, ReservationType.CORRUPT_HDR_SEGMENT);
-			assignedHeaders = true;
+			while (!IsValidSegmentHeader(_r, currByte))
+			{
+				ulong fixedIndex = (currByte - SEGMENT_BASE) / SEGMENT_SIZE + 1;
+				if (currByte + SEGMENT_SIZE <= maxLength)
+				{
+					RegisterFileSpace(currByte, SEGMENT_SIZE, (uint)fixedIndex, ReservationType.CORRUPT_HDR_SEGMENT);
+					assignedHeaders = true;
+					currByte += SEGMENT_SIZE;
+				}
+				else
+				{
+					break;
+				}
+			}
 		}
 
 		return assignedHeaders;
@@ -204,7 +199,7 @@ class CorruptionHelper
 		do
 		{
 			IdentifyCorruptIndexes(validIndexes);
-			
+
 		}
 		while (AssignCorruptedHeaders());
 
@@ -214,16 +209,14 @@ class CorruptionHelper
 	private bool IdentifyCorruptIndexes(Dictionary<uint, Segment> validIndexes, bool isFinalPass=false)
 	{
 		bool byteSpacesWasUpdated = false;
-		foreach (ByteSpace curr in this.byteSpaces)
+		foreach (ByteSpace curr in new List<ByteSpace>(byteSpaces.FindAll(b => b.type == ReservationType.EMPTY)))
 		{
-			if (curr.type != ReservationType.EMPTY) continue;
-
 			if (curr.firstByte > long.MaxValue) throw new Exception("Number too big");
 
-			byteSpacesWasUpdated = TryRecover(curr.firstByte, validIndexes, isFinalPass);
+			byteSpacesWasUpdated = TryRecover(curr, validIndexes, isFinalPass);
 		}
 
-		if (byteSpacesWasUpdated) IdentifyCorruptIndexes(validIndexes);
+		//if (byteSpacesWasUpdated) IdentifyCorruptIndexes(validIndexes);
 
 		return byteSpacesWasUpdated;
 	}
