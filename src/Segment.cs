@@ -46,6 +46,8 @@ class Segment
 		this.SOURCE_LENGTH = BE(r.ReadUInt32());
 		this.COMPRESSED_LENGTH = BE(r.ReadUInt32());
 
+		if (COMPRESSED_LENGTH == 0)
+			throw new InvalidDataException("Compressed Length cannot be equal to zero.");
 		if (COMPRESSED_LENGTH > MAX_INT)
 			//TODO: figure out if this is a valid exception (can segments be bigger than MAX_INT without corruption?)
 			throw new InvalidDataException("Compressed Length cannot be bigger than int limit."); 

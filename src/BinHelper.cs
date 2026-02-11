@@ -19,6 +19,8 @@ public static class BinHelper
 		uint SOURCE_LENGTH = BE(_r.ReadUInt32());
 		uint COMPRESSED_LENGTH = BE(_r.ReadUInt32());
 
+		if (COMPRESSED_LENGTH == 0)
+			return false;
 		if (COMPRESSED_LENGTH > MAX_INT)
 			//TODO: figure out if this is a valid exception (can segments be bigger than MAX_INT without corruption?)
 			return false; //throw new InvalidDataException("Compressed Length cannot be bigger than int limit."); 

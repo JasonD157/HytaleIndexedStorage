@@ -34,7 +34,7 @@ struct ByteSpace
 
 	public override string ToString()
 	{
-		return $"[{type}]".PadRight(25) + $"[{firstByte}-{lastByte}]".PadRight(25) + $"{{{lastByte-firstByte+1}}}".PadRight(10)+ $"({debugIndex})";
+		return $"[{type}]".PadRight(25) + $"[0x{firstByte.ToString("X")}-0x{lastByte.ToString("X")}]".PadRight(25) + $"{{0x{(lastByte-firstByte+1).ToString("X")}}}".PadRight(10)+ $"({debugIndex})";
 	}
 }
 
@@ -110,12 +110,12 @@ class CorruptionHelper
 
 	private void SortByteSpaces()
 	{
-		this.byteSpaces.Sort((a, b) => a.firstByte.CompareTo(b.firstByte));
+		byteSpaces.Sort((a, b) => a.firstByte.CompareTo(b.firstByte));
 	}
 
 	private ReservationType GetReservationType(ulong atByte)
 	{
-		ByteSpace found = this.byteSpaces.FindLast(a => a.firstByte <= atByte && a.lastByte >= atByte);
+		ByteSpace found = byteSpaces.FindLast(a => a.firstByte <= atByte && a.lastByte >= atByte);
 		if (found.Equals(default(ByteSpace))) throw new Exception("what");
 
 		return found.type;
@@ -124,11 +124,11 @@ class CorruptionHelper
 	public void PrintByteSpaces()
 	{
 		SortByteSpaces();
-		foreach (ByteSpace curr in this.byteSpaces)
+		foreach (ByteSpace curr in byteSpaces)
 		{
 			if (curr.type == ReservationType.EMPTY) Console.ForegroundColor = ConsoleColor.Yellow;
 			if (curr.type == ReservationType.SEGMENT) Console.ForegroundColor = ConsoleColor.Green;
-			if (curr.type == ReservationType.REGION_HEADER) Console.ForegroundColor = ConsoleColor.Magenta;
+			if (curr.type == ReservationType.REGION_HEADER) Console.ForegroundColor = ConsoleColor.DarkCyan;
 			if (curr.type == ReservationType.PAGE_CHUNK_FILLER) Console.ForegroundColor = ConsoleColor.Black;
 			if (curr.type == ReservationType.CORRUPT_IDX_SEGMENT) Console.ForegroundColor = ConsoleColor.DarkMagenta;
 			if (curr.type == ReservationType.CORRUPT_HDR_SEGMENT) Console.ForegroundColor = ConsoleColor.DarkRed;
@@ -171,21 +171,28 @@ class CorruptionHelper
 		foreach (ByteSpace curr in new List<ByteSpace>(byteSpaces.FindAll(b => b.type == ReservationType.EMPTY)))
 		{
 			if (curr.firstByte > long.MaxValue) throw new Exception("Number too big");
+
 			ulong currByte = curr.firstByte;
+			ulong length = 0;
+			ulong fixedIndex = (currByte - SEGMENT_BASE) / SEGMENT_SIZE + 1;
 
 			while (!IsValidSegmentHeader(_r, currByte))
 			{
-				ulong fixedIndex = (currByte - SEGMENT_BASE) / SEGMENT_SIZE + 1;
 				if (currByte + SEGMENT_SIZE <= maxLength)
 				{
-					RegisterFileSpace(currByte, SEGMENT_SIZE, (uint)fixedIndex, ReservationType.CORRUPT_HDR_SEGMENT);
 					assignedHeaders = true;
 					currByte += SEGMENT_SIZE;
+					length += SEGMENT_SIZE;
 				}
 				else
 				{
 					break;
 				}
+			}
+
+			if (length > 0)
+			{
+				RegisterFileSpace(curr.firstByte, length, (uint)fixedIndex, ReservationType.CORRUPT_HDR_SEGMENT);
 			}
 		}
 
