@@ -14,7 +14,7 @@ class Segment
 	public uint SOURCE_LENGTH;
 	public uint COMPRESSED_LENGTH;
 	public byte[] uncompressedData;
-	public JObject JSONObj;
+	private JObject JSONObj;
 	public bool IS_EMPTY = false;
 	public bool IS_CORRUPTED = false;
 

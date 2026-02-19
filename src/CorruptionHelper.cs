@@ -7,12 +7,12 @@ namespace Corruption;
 enum ReservationType
 {
 	EMPTY,                  //No data, if this is present in the final dump a corrupted region lives there.
-	SEGMENT,                //Chunk data
+	SEGMENT,                //Valid Chunk data
 	REGION_HEADER,          //Header of the region file
-	PAGE_CHUNK_FILLER,      //Hytale stores segments in BLOB_SIZES, currently 4096 bytes. As such Segments have padding.
-	CORRUPT_IDX_SEGMENT,    //Broken blob_index
-	CORRUPT_HDR_SEGMENT,	//Broken segment header
-	CORRUPT_ZHDR_SEGMENT,   //Broken Zstd header
+	PAGE_CHUNK_FILLER,      //Hytale stores segments in BLOB_SIZES, currently 4096 bytes. As such Segments have padding, identified by this value.
+	CORRUPT_IDX_SEGMENT,    //Broken blob_index. Not all bytespaces of this type are valid as some are "discarded" chunks which still live in the file.
+	CORRUPT_HDR_SEGMENT,	//Broken segment header, most of the time this is a false positive. Even clean, uncorrupted regionfiles will have some of these.
+	CORRUPT_ZHDR_SEGMENT,   //Broken Zstd header, also a false positive most of the time.
 }
 
 struct ByteSpace
@@ -68,7 +68,7 @@ class CorruptionHelper
 			//Double-assign due to corrupted indexes (index table contains a duplicate entry)
 			if (!byteSpaces.Find(b => b.Equals(newB)).Equals(default(ByteSpace))) return;
 
-			//Print debug info
+			//Print debug info on error
 			SortByteSpaces();
 			Console.WriteLine(string.Join(",\n", byteSpaces));
 			Console.WriteLine($"Curr: {newB}");
@@ -137,7 +137,7 @@ class CorruptionHelper
 		}
 	}
 
-	private bool TryRecover(ByteSpace curr, Dictionary<uint, Segment> validIndexes, bool isFinalPass)
+	private bool TryRecover(ByteSpace curr, Dictionary<uint, Segment> recoveredIndexes)
 	{
 		ulong startByte = curr.firstByte;
 		while (IsValidSegmentHeader(_r, startByte) && startByte <= curr.lastByte)
@@ -158,7 +158,7 @@ class CorruptionHelper
 			}
 
 			ulong bytesClaimed = RegisterFileSpace(startByte, trySeg.COMPRESSED_LENGTH, (uint)fixedIndex, ReservationType.CORRUPT_IDX_SEGMENT); //Padding incl.
-			validIndexes.Add((uint)fixedIndex, trySeg);
+			recoveredIndexes.Add((uint)fixedIndex, trySeg);
 			startByte += bytesClaimed + 1;
 		}
 
@@ -199,32 +199,32 @@ class CorruptionHelper
 		return assignedHeaders;
 	}
 
-	public Dictionary<uint, Segment> IdentifyCorruptedSegments()
-	{
-		Dictionary<uint, Segment> validIndexes = new();
-
-		do
-		{
-			IdentifyCorruptIndexes(validIndexes);
-
-		}
-		while (AssignCorruptedHeaders());
-
-		return validIndexes;
-	}
-
-	private bool IdentifyCorruptIndexes(Dictionary<uint, Segment> validIndexes, bool isFinalPass=false)
+	private bool IdentifyCorruptIndexes(Dictionary<uint, Segment> recoveredIndexes)
 	{
 		bool byteSpacesWasUpdated = false;
 		foreach (ByteSpace curr in new List<ByteSpace>(byteSpaces.FindAll(b => b.type == ReservationType.EMPTY)))
 		{
 			if (curr.firstByte > long.MaxValue) throw new Exception("Number too big");
 
-			byteSpacesWasUpdated = TryRecover(curr, validIndexes, isFinalPass);
+			byteSpacesWasUpdated = TryRecover(curr, recoveredIndexes);
 		}
 
 		//if (byteSpacesWasUpdated) IdentifyCorruptIndexes(validIndexes);
 
 		return byteSpacesWasUpdated;
+	}
+	
+	public Dictionary<uint, Segment> IdentifyCorruptedSegments()
+	{
+		Dictionary<uint, Segment> recoveredIndexes = new();
+
+		do
+		{
+			IdentifyCorruptIndexes(recoveredIndexes);
+
+		}
+		while (AssignCorruptedHeaders());
+
+		return recoveredIndexes;
 	}
 }

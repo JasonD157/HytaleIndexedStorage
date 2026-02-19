@@ -41,7 +41,7 @@ class RegionFile
 	public Chunk[] chunks;
 
 	public string fileName;
-	public Pos regionPos;
+	public Pos_2D regionPos;
 	public Region chunkRegion;
 
 	public ChunkHealth chunkHealth;
@@ -73,8 +73,8 @@ class RegionFile
 		int r_x, r_z = 0;
 		Assert(int.TryParse(splits[^3], out r_x) && int.TryParse(splits[^4], out r_z), "Couldn't parse region coordinates from filename.");
 
-		Pos innerPos = new Pos(r_x * REGION_LENGTH, r_z * REGION_LENGTH);
-		Pos outerPos = new Pos((r_x + 1) * REGION_LENGTH, (r_z + 1) * REGION_LENGTH);
+		Pos_2D innerPos = new Pos_2D(r_x * REGION_LENGTH, r_z * REGION_LENGTH);
+		Pos_2D outerPos = new Pos_2D((r_x + 1) * REGION_LENGTH, (r_z + 1) * REGION_LENGTH);
 
 		this.regionPos = innerPos;
 		this.chunkRegion = new Region(innerPos, outerPos);
@@ -123,7 +123,7 @@ class RegionFile
 		this.rawSegments = segments;
 		Dictionary<uint, Segment> corrIndexes = _corruptionHelper.IdentifyCorruptedSegments();
 		_corruptionHelper.PrintByteSpaces();
-		Console.WriteLine(corrIndexes.Count);
+		Console.WriteLine($"[INFO] Potentially recovered indexes: {corrIndexes.Count}");
 	}
 
 	private (bool, Segment) ReadBlob(uint index)
@@ -156,16 +156,23 @@ class RegionFile
 
 	private void ConvertBlobsToChunks()
 	{
+		Console.WriteLine($"[INFO] Started reading Blockdata for regionfile {fileName} (this takes a small while)");
 		Chunk[] chunks = new Chunk[_BLOB_COUNT];
 		for (int i = 0; i < _BLOB_COUNT; i++)
 		{
 			Segment segment = rawSegments[i];
-			chunks[i] = new Chunk(segment, this.chunkRegion, i);
+
+			Chunk newChunk = new Chunk(segment);
+			newChunk.CalculateWorldPos(this.chunkRegion, i);
+			newChunk.GetBlockData();
+
+			chunks[i] = newChunk;
 
 			//string json = JsonConvert.SerializeObject(segment.JSONObj);
 			//File.WriteAllText($"../../../jsondump/jsondump_{regionPos.x}_{regionPos.z}_{chunks[i].chunkPos.x}_{chunks[i].chunkPos.z}.temp.json", json);
 		}
 
+		Console.WriteLine($"[INFO] Finished reading Blockdata");
 		this.chunks = chunks;
 	}
 

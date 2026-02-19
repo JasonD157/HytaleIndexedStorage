@@ -1,3 +1,4 @@
+using System.Globalization;
 using static System.Buffers.Binary.BinaryPrimitives;
 using static Globals.Globals;
 namespace BinUtil;
@@ -5,6 +6,16 @@ namespace BinUtil;
 public static class BinHelper
 {
 	public static uint BE(uint LE)
+	{
+		return ReverseEndianness(LE);
+	}
+
+	public static int BE(int LE)
+	{
+		return ReverseEndianness(LE);
+	}
+
+	public static ushort BE(ushort LE)
 	{
 		return ReverseEndianness(LE);
 	}

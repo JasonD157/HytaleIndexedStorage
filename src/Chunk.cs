@@ -1,6 +1,10 @@
 using SegmentLib;
 using Globals;
 using static Globals.Globals;
+using Newtonsoft.Json.Linq;
+using BlockData;
+using Corruption;
+using BlockHelper;
 
 namespace ChunkLib;
 
@@ -11,18 +15,16 @@ class Chunk
 	
 
 	public Segment homeSegment;
-	public Pos chunkPos;
-	public Region chunkRegion;
-		
-	public Chunk(Segment homeSegment, Region homeRegion, int chunkNum)
+	public Pos_2D? chunkPos;
+	public Region? chunkRegion;
+
+	public Chunk(Segment homeSegment)
 	{
 		this.homeSegment = homeSegment;
 
-		CalculateWorldPos(homeRegion, chunkNum);
-
 		if (!homeSegment.IS_EMPTY)
 		{
-			
+
 		}
 		else
 		{
@@ -31,15 +33,34 @@ class Chunk
 
 		if (homeSegment.IS_CORRUPTED) this.IS_CORRUPTED = true;
 	}
+	
+	public void GetBlockData()
+	{
+		if (IS_EMPTY) return;
+
+		JObject json = homeSegment.GetBSON();
+		JToken chunkColumn = json.SelectToken("Components.ChunkColumn.Sections");
+
+		BlockChunk blockChunk = new BlockChunk();
+		int sectionNumber = 0;
+		foreach (JToken section in chunkColumn.Children())
+		{
+			int version = (int)section.SelectToken("Components.Block.Version");
+			byte[] blockData = (byte[])section.SelectToken("Components.Block.Data");
+
+			var reader = new BlockDataReader(blockData, sectionNumber, blockChunk);
+			sectionNumber += 1;
+		}
+	}
 
 	public void CalculateWorldPos(Region homeRegion, int chunkNum)
 	{
-		Pos basePos = homeRegion.firstPos;
+		Pos_2D basePos = homeRegion.firstPos;
 
 		int x = chunkNum % 31; //Column
 		int z = chunkNum & 31; //Row
 
-		this.chunkPos = basePos + new Pos(x * CHUNK_SIZE, z * CHUNK_SIZE);
-		this.chunkRegion = new Region(this.chunkPos, this.chunkPos + new Pos(CHUNK_SIZE, CHUNK_SIZE));
+		this.chunkPos = basePos + new Pos_2D(x * CHUNK_SIZE, z * CHUNK_SIZE);
+		this.chunkRegion = new Region(this.chunkPos, this.chunkPos + new Pos_2D(CHUNK_SIZE, CHUNK_SIZE));
 	}
 }
