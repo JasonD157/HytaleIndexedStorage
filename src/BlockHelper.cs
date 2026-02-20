@@ -34,7 +34,7 @@ class BlockChunk
 
 	public BlockChunk()
 	{
-		blockKeys = new uint[32 * 32 * 320];
+		blockKeys = new uint[CHUNK_AREA * CHUNK_HEIGHT];
 		currIdx = 0;
 		map = BlockMap.GetBlockMap();
 	}
@@ -50,12 +50,17 @@ class BlockChunk
 		return blockKeys[idx];
 	}
 
-	public string GetBlock(uint idx)
+	public string GetBlockName(uint idx)
 	{
 		return map.GetBlock(blockKeys[idx]);
 	}
 
-	public uint[] GetBlocks()
+	public Block GetBlock(uint idx)
+	{
+		return new Block(idx, GetBlockName(idx));
+	}
+
+	public uint[] GetRawBlockData()
 	{
 		//Pls no mutate
 		return blockKeys;
@@ -79,7 +84,7 @@ class BlockChunk
 		for (uint y = CHUNK_HEIGHT - 1; y > 0; y--)
 		{
 			uint index = BlockHelper.GetChunkIndex(x, y, z);
-			string blockName = GetBlock(index);
+			string blockName = GetBlockName(index);
 			if (blockName != Air_BlockName) return new Block(index, blockName);
 		}
 
