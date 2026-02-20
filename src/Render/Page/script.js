@@ -38,127 +38,63 @@ scene.add(new THREE.AmbientLight(0x404040));
 let mesh = null;
 
 /* ------------------------------
-   Sample 32x32x64 grid
---------------------------------*/
-
-const SIZE_X = 32;
-const SIZE_Y = 320;
-const SIZE_Z = 32;
-
-function key(x, y, z) { return `${x},${y},${z}`; }
-
-/* ------------------------------
    Greedy Meshing
 --------------------------------*/
 
-function greedyMesh(voxels, sizeX, sizeY, sizeZ)
-{
+function greedyMesh(voxels) {
     const positions = [];
     const colors = [];
     const indices = [];
     let indexOffset = 0;
 
-    const dims = [sizeX, sizeY, sizeZ];
-    const mask = [];
+    const voxelKeys = Object.keys(voxels)
+        .map(k => k.split(',').map(Number)); // [[x,y,z], ...]
 
-    for (let d=0; d<3; d++)
-    {
-        const u = (d+1)%3;
-        const v = (d+2)%3;
+    const directions = [
+        [1,0,0], [-1,0,0],
+        [0,1,0], [0,-1,0],
+        [0,0,1], [0,0,-1]
+    ];
 
-        const x = [0,0,0];
-        const q = [0,0,0];
-        q[d] = 1;
+    const faceVertices = [
+        [[1,0,0],[1,1,0],[1,1,1],[1,0,1]], // +X
+        [[0,0,1],[0,1,1],[0,1,0],[0,0,0]], // -X
+        [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], // +Y
+        [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], // -Y
+        [[0,0,1],[1,0,1],[1,1,1],[0,1,1]], // +Z
+        [[0,1,0],[1,1,0],[1,0,0],[0,0,0]]  // -Z
+    ];
 
-        for (x[d]=-1; x[d]<dims[d]; )
-        {
-            let n = 0;
+    const voxelSet = new Set(Object.keys(voxels));
 
-            for (x[v]=0; x[v]<dims[v]; x[v]++)
-            for (x[u]=0; x[u]<dims[u]; x[u]++)
-            {
-                const a = (x[d]>=0)
-                    ? voxels[key(x[0],x[1],x[2])]
-                    : null;
+    for (const [x, y, z] of voxelKeys) {
+        const color = voxels[`${x},${y},${z}`];
 
-                const b = (x[d]<dims[d]-1)
-                    ? voxels[key(x[0]+q[0],x[1]+q[1],x[2]+q[2])]
-                    : null;
+        for (let f = 0; f < 6; f++) {
+            const nx = x + directions[f][0];
+            const ny = y + directions[f][1];
+            const nz = z + directions[f][2];
 
-                if (!!a === !!b)
-                    mask[n++] = null;
-                else
-                    mask[n++] = a ? {color:a, back:false} : {color:b, back:true};
+            if (voxelSet.has(`${nx},${ny},${nz}`)) continue; // skip hidden faces
+
+            // Add face vertices
+            for (let i = 0; i < 4; i++) {
+                const v = faceVertices[f][i];
+                positions.push(x+v[0], y+v[1], z+v[2]);
+                colors.push(...color);
             }
 
-            x[d]++;
-
-            n = 0;
-
-            for (let j=0; j<dims[v]; j++)
-            for (let i=0; i<dims[u]; )
-            {
-                const m = mask[n];
-                if (!m){ i++; n++; continue; }
-
-                let w;
-                for (w=1; i+w<dims[u] && mask[n+w] &&
-                    JSON.stringify(mask[n+w].color)===JSON.stringify(m.color) &&
-                    mask[n+w].back===m.back; w++);
-
-                let h;
-                outer: for (h=1; j+h<dims[v]; h++)
-                {
-                    for (let k=0;k<w;k++)
-                    {
-                        const next = mask[n+k+h*dims[u]];
-                        if (!next ||
-                            JSON.stringify(next.color)!==JSON.stringify(m.color) ||
-                            next.back!==m.back)
-                            break outer;
-                    }
-                }
-
-                x[u]=i; x[v]=j;
-                const du=[0,0,0]; const dv=[0,0,0];
-                du[u]=w; dv[v]=h;
-
-                const quad = [
-                    [x[0],x[1],x[2]],
-                    [x[0]+du[0],x[1]+du[1],x[2]+du[2]],
-                    [x[0]+du[0]+dv[0],x[1]+du[1]+dv[1],x[2]+du[2]+dv[2]],
-                    [x[0]+dv[0],x[1]+dv[1],x[2]+dv[2]]
-                ];
-
-                if (m.back) quad.reverse();
-
-                for (let p of quad)
-                {
-                    positions.push(...p);
-                    colors.push(...m.color);
-                }
-
-                indices.push(
-                    indexOffset, indexOffset+1, indexOffset+2,
-                    indexOffset, indexOffset+2, indexOffset+3
-                );
-                indexOffset+=4;
-
-                for (let l=0;l<h;l++)
-                for (let k=0;k<w;k++)
-                    mask[n+k+l*dims[u]]=null;
-
-                i+=w;
-                n+=w;
-            }
+            indices.push(
+                indexOffset, indexOffset+1, indexOffset+2,
+                indexOffset, indexOffset+2, indexOffset+3
+            );
+            indexOffset += 4;
         }
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position',
-        new THREE.Float32BufferAttribute(positions,3));
-    geometry.setAttribute('color',
-        new THREE.Float32BufferAttribute(colors,3));
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
@@ -174,7 +110,7 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
     reader.onload = function(e) {
         const data = JSON.parse(e.target.result);
         if(mesh) scene.remove(mesh);
-        const geometry = greedyMesh(data, SIZE_X, SIZE_Y, SIZE_Z);
+        const geometry = greedyMesh(data);
         const material = new THREE.MeshLambertMaterial({ vertexColors:true });
         mesh = new THREE.Mesh(geometry, material);
         scene.add(mesh);
@@ -191,6 +127,15 @@ window.addEventListener('resize', () =>
     renderer.setSize(sizes.width, sizes.height)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
+var button = document.getElementById("goto");
+button.onclick = function ()
+{
+	var x = parseInt(document.getElementById("x").value);
+	var y = parseInt(document.getElementById("y").value);
+	var z = parseInt(document.getElementById("z").value);
+
+	camera.position.set(x,z,y)
+}
 // Animation
 const tick = () => {
     controls.update()

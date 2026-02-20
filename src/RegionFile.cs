@@ -6,6 +6,7 @@ using static BinUtil.BinHelper;
 using static Globals.Globals;
 using Corruption;
 using Newtonsoft.Json;
+using BlockHelper;
 
 namespace RegionFileLib;
 
@@ -74,7 +75,7 @@ class RegionFile
 		Assert(int.TryParse(splits[^3], out r_x) && int.TryParse(splits[^4], out r_z), "Couldn't parse region coordinates from filename.");
 
 		Pos_2D innerPos = new Pos_2D(r_x * REGION_LENGTH, r_z * REGION_LENGTH);
-		Pos_2D outerPos = new Pos_2D((r_x + 1) * REGION_LENGTH, (r_z + 1) * REGION_LENGTH);
+		Pos_2D outerPos = new Pos_2D((r_x + 1) * REGION_LENGTH - 1, (r_z + 1) * REGION_LENGTH - 1);
 
 		this.regionPos = innerPos;
 		this.chunkRegion = new Region(innerPos, outerPos);
@@ -158,6 +159,7 @@ class RegionFile
 	{
 		Console.WriteLine($"[INFO] Started reading Blockdata for regionfile {fileName} (this takes a small while)");
 		Chunk[] chunks = new Chunk[_BLOB_COUNT];
+		List<Block> blocks = new(); 
 		for (int i = 0; i < _BLOB_COUNT; i++)
 		{
 			Segment segment = rawSegments[i];
@@ -165,14 +167,17 @@ class RegionFile
 			Chunk newChunk = new Chunk(segment);
 			newChunk.CalculateWorldPos(this.chunkRegion, i);
 			newChunk.GetBlockData();
-
+			if (newChunk.blocks is not null && i < 255)
+				//Console.WriteLine(i);
+				blocks.AddRange(newChunk.blocks);
 			chunks[i] = newChunk;
 
 			//string json = JsonConvert.SerializeObject(segment.JSONObj);
 			//File.WriteAllText($"../../../jsondump/jsondump_{regionPos.x}_{regionPos.z}_{chunks[i].chunkPos.x}_{chunks[i].chunkPos.z}.temp.json", json);
 		}
 
-		Console.WriteLine($"[INFO] Finished reading Blockdata");
+		Console.WriteLine($"[INFO] Finished reading Blockdata. {blocks.Count}");
+		//ConvertToRender.ConvertToRender.Convert(blocks.ToArray());
 		this.chunks = chunks;
 	}
 

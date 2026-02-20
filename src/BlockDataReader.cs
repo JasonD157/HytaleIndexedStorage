@@ -40,16 +40,15 @@ class BlockDataReader
 	public int paletteLength;
 	public List<Palette> palettes = new();
 	public Dictionary<short, string> paletteMap = new();
-	public Dictionary<Pos_3D, string> blockMap = new();
 
-	public BlockDataReader(byte[] data, int sectionNumber, BlockChunk output)
+	public BlockDataReader(byte[] data, BlockChunk output)
 	{
 		using (var memStream = new MemoryStream(data))
 		using (var reader = new BinaryReader(memStream))
 		{
 			ReadHeader(reader);
 			ReadPalette(reader);
-			ReadBlocks(reader, sectionNumber, output);
+			ReadBlocks(reader, output);
 		}
 	}
 
@@ -91,13 +90,13 @@ class BlockDataReader
 		}
 	}
 
-	public void ReadBlocks(BinaryReader _r, int sectionNumber, BlockChunk output)
+	public void ReadBlocks(BinaryReader _r, BlockChunk output)
 	{
-		ushort blockLength = paletteType switch
+		int blockLength = paletteType switch
 		{
 			1 => 16384,
-			2 => 32767,
-			3 => ushort.MaxValue,
+			2 => 32768,
+			3 => 65636,
 			_ => 0
 		};
 		ushort currentBlock = 0;

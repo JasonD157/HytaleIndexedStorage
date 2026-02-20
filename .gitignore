@@ -137,3 +137,6 @@ _NCrunch*
 
 # JsonDumps for testing
 *.temp.json
+
+# Voxel data output
+*.voxels.json

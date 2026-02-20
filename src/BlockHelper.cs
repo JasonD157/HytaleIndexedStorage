@@ -8,15 +8,16 @@ struct Block
 	public Pos_3D pos;
 	public string blockName;
 
-	public Block(Pos_3D pos, string name)
+	public Block(Pos_3D pos, string name, Pos_3D? mut=null)
 	{
-		this.pos = pos;
+		this.pos = (mut is null) ? pos: pos + mut;
+		
 		blockName = name;
 	}
 
-	public Block(uint idx, string name)
+	public Block(uint idx, string name, Pos_3D? mut=null)
 	{
-		pos = BlockHelper.GetChunkPos(idx);
+		pos = (mut is null) ? BlockHelper.GetChunkPos(idx) : BlockHelper.GetChunkPos(idx) + mut;
 		blockName = name;
 	}
 
@@ -55,9 +56,21 @@ class BlockChunk
 		return map.GetBlock(blockKeys[idx]);
 	}
 
-	public Block GetBlock(uint idx)
+	public Block GetBlock(uint idx, Pos_3D? mut = null)
 	{
-		return new Block(idx, GetBlockName(idx));
+		return new Block(idx, GetBlockName(idx), mut);
+	}
+	
+	public Block[] GetBlocks(Pos_3D? mut = null)
+	{
+		List<Block> blocks = new();
+
+		for (uint i = 0; i < CHUNK_AREA * CHUNK_HEIGHT; i++)
+		{
+			blocks.Add(GetBlock(i, mut));
+		}
+
+		return blocks.ToArray();
 	}
 
 	public uint[] GetRawBlockData()

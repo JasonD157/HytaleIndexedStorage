@@ -18,6 +18,9 @@ class Chunk
 	public Pos_2D? chunkPos;
 	public Region? chunkRegion;
 
+	public BlockChunk blockChunk;
+	public Block[] blocks;
+
 	public Chunk(Segment homeSegment)
 	{
 		this.homeSegment = homeSegment;
@@ -48,19 +51,25 @@ class Chunk
 			int version = (int)section.SelectToken("Components.Block.Version");
 			byte[] blockData = (byte[])section.SelectToken("Components.Block.Data");
 
-			var reader = new BlockDataReader(blockData, sectionNumber, blockChunk);
+			var reader = new BlockDataReader(blockData, blockChunk);
 			sectionNumber += 1;
 		}
+
+		Pos_3D? mut = null;
+		if (chunkPos is not null) mut = new Pos_3D(chunkPos.x, 0, chunkPos.z);
+
+		this.blockChunk = blockChunk;
+		this.blocks = blockChunk.GetBlocks(mut);
 	}
 
 	public void CalculateWorldPos(Region homeRegion, int chunkNum)
 	{
 		Pos_2D basePos = homeRegion.firstPos;
 
-		int x = chunkNum % 31; //Column
-		int z = chunkNum & 31; //Row
+		int x = chunkNum & 31; //Column
+		int z = chunkNum / 32; //Row
 
 		this.chunkPos = basePos + new Pos_2D(x * CHUNK_SIZE, z * CHUNK_SIZE);
-		this.chunkRegion = new Region(this.chunkPos, this.chunkPos + new Pos_2D(CHUNK_SIZE, CHUNK_SIZE));
+		this.chunkRegion = new Region(this.chunkPos, this.chunkPos + new Pos_2D(CHUNK_SIZE - 1, CHUNK_SIZE - 1));
 	}
 }
