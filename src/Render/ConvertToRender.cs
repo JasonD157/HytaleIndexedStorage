@@ -34,13 +34,16 @@ static class ConvertToRender
 		Dictionary<string, string> colormap = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
 		string defaultColor = "#FF0000"; //Bright Red
 
-		Dictionary<string, float[]> voxels = new();
+		Dictionary<string, string> voxels = new();
 		foreach (Block block in blocks)
 		{
-			if (block.blockName == Air_BlockName) continue; //Skip air, we don't render it.
+			string name = block.blockName;
 
-			float[] color = Convert(colormap.GetValueOrDefault(block.blockName, defaultColor));
-			if (colormap.GetValueOrDefault(block.blockName, defaultColor) == defaultColor) Console.WriteLine($"[WARN] Couldn't find a color for {block.blockName}");
+			if (name == Air_BlockName) continue; //Skip air, we don't render it.
+			if (name[0] == '*') name = name.Substring(1, name.Length-1); //Block state indicator
+
+			string color = colormap.GetValueOrDefault(name, defaultColor);
+			if (colormap.GetValueOrDefault(name, defaultColor) == defaultColor) Console.WriteLine($"[WARN] Couldn't find a color for {block.blockName}");
 
 			voxels.Add(Convert(block.pos), color);
 		}
@@ -49,7 +52,7 @@ static class ConvertToRender
 		File.WriteAllText($"../../../src/Render/Voxels/{id}{((id == "") ? "temp" : "")}.voxels.json", voxelJson);
 	}
 
-	public static void Convert(BlockChunk chunk, Pos_3D? mut=null)
+	public static void Convert(BlockChunk chunk, Pos_3D? mut=null, string id="")
 	{
 		List<Block> blocks = new();
 		for (uint i = 0; i < CHUNK_AREA * CHUNK_HEIGHT; i++)
@@ -57,11 +60,11 @@ static class ConvertToRender
 			blocks.Add(chunk.GetBlock(i, mut));
 		}
 
-		GenerateVoxels(blocks.ToArray());
+		GenerateVoxels(blocks.ToArray(), id);
 	}
 
-	public static void Convert(Block[] blocks)
+	public static void Convert(Block[] blocks, string id="")
 	{
-		GenerateVoxels(blocks);
+		GenerateVoxels(blocks, id);
 	}
 }

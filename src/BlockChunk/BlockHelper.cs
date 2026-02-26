@@ -92,19 +92,19 @@ class BlockChunk
 		return slice;
 	}
 
-	public Block GetHeighestNonEmptyBlock(uint x, uint z)
+	public Block GetHeighestNonEmptyBlock(uint x, uint z, Pos_3D? mut = null)
 	{
 		for (uint y = CHUNK_HEIGHT - 1; y > 0; y--)
 		{
 			uint index = BlockHelper.GetChunkIndex(x, y, z);
 			string blockName = GetBlockName(index);
-			if (blockName != Air_BlockName) return new Block(index, blockName);
+			if (blockName != Air_BlockName) return new Block(index, blockName, mut);
 		}
 
 		throw new Exception("Whole slice is empty.");
 	}
 
-	public Block[] GetHeighestNonEmptyBlocks()
+	public Block[] GetHeighestNonEmptyBlocks(Pos_3D? mut = null)
 	{
 		Block[] array = new Block[CHUNK_AREA];
 
@@ -112,7 +112,7 @@ class BlockChunk
 		{
 			uint x = i & 31;
 			uint z = i / 32;
-			array[i] = GetHeighestNonEmptyBlock(x, z);
+			array[i] = GetHeighestNonEmptyBlock(x, z, mut);
 		}
 
 		return array;

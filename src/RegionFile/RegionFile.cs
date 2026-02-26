@@ -160,6 +160,7 @@ class RegionFile
 		Console.WriteLine($"[INFO] Started reading Blockdata for regionfile {fileName} (this takes a small while)");
 		Chunk[] chunks = new Chunk[_BLOB_COUNT];
 		List<Block> blocks = new(); 
+		List<Block> topBlocks = new(); 
 		for (int i = 0; i < _BLOB_COUNT; i++)
 		{
 			Segment segment = rawSegments[i];
@@ -167,17 +168,21 @@ class RegionFile
 			Chunk newChunk = new Chunk(segment);
 			newChunk.CalculateWorldPos(this.chunkRegion, i);
 			newChunk.GetBlockData();
-			if (newChunk.blocks is not null && i < 255)
+			if (newChunk.blocks is not null) //&& i < 255)
+			{
 				//Console.WriteLine(i);
-				blocks.AddRange(newChunk.blocks);
+				//blocks.AddRange(newChunk.blocks);
+				topBlocks.AddRange(newChunk.topBlocks);
+			}
 			chunks[i] = newChunk;
 
 			//string json = JsonConvert.SerializeObject(segment.JSONObj);
 			//File.WriteAllText($"../../../jsondump/jsondump_{regionPos.x}_{regionPos.z}_{chunks[i].chunkPos.x}_{chunks[i].chunkPos.z}.temp.json", json);
 		}
 
-		Console.WriteLine($"[INFO] Finished reading Blockdata. {blocks.Count}");
-		//ConvertToRender.ConvertToRender.Convert(blocks.ToArray());
+		Console.WriteLine($"[INFO] Finished reading Blockdata. Read {blocks.Count} blocks");
+		//ConvertToRender.ConvertToRender.Convert(blocks.ToArray(), "chunk");
+		ConvertToRender.ConvertToRender.Convert(topBlocks.ToArray(), "top");
 		this.chunks = chunks;
 	}
 

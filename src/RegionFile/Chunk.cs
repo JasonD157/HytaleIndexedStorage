@@ -20,6 +20,7 @@ class Chunk
 
 	public BlockChunk blockChunk;
 	public Block[] blocks;
+	public Block[] topBlocks;
 
 	public Chunk(Segment homeSegment)
 	{
@@ -60,6 +61,7 @@ class Chunk
 
 		this.blockChunk = blockChunk;
 		this.blocks = blockChunk.GetBlocks(mut);
+		this.topBlocks = blockChunk.GetHeighestNonEmptyBlocks(mut);
 	}
 
 	public void CalculateWorldPos(Region homeRegion, int chunkNum)
