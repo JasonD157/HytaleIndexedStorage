@@ -47,7 +47,11 @@ No promises.
 
 ## 🛠 Requirements
 
-* **.NET 10 SDK**
+* **.NET 10 SDK**  
+#### NuGet packages:
+* Newtonsoft.Json        13.0.4
+* Newtonsoft.Json.Bson   1.0.3
+* Zstandard.Net          1.1.7
 
 ---
 
