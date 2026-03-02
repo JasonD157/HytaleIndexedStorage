@@ -2,10 +2,40 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8">
-		<title>Test Chunk Viewer</title>
+		<title>World Map — Voxel Viewer</title>
 		<link rel="stylesheet" href="./style.css">
+	<style>
+		#tooltip {
+			display: none;
+			position: fixed;
+			z-index: 200;
+			background: rgba(15, 16, 30, 0.92);
+			border: 1px solid rgba(76, 111, 255, 0.5);
+			border-radius: 8px;
+			padding: 8px 12px;
+			font-size: 0.82rem;
+			color: #cdd6ff;
+			pointer-events: none;
+			line-height: 1.6;
+			backdrop-filter: blur(6px);
+			box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+		}
+		.tip-coord {
+			font-weight: 600;
+			color: #8aa4ff;
+			font-size: 0.9rem;
+		}
+		.tip-swatch {
+			display: inline-block;
+			width: 12px;
+			height: 12px;
+			border-radius: 3px;
+			border: 1px solid rgba(255,255,255,0.2);
+			vertical-align: middle;
+			margin-right: 4px;
+		}
+	</style>
 	</head>
-		
 	<body>
 		<div class="PageNavs">
 			<nav class="PageNavs">
@@ -19,10 +49,13 @@
 		<div>
 			<input type="file" id="fileInput" accept=".json">
 		</div>
+		<div id="loadingContainer">
+			<div id="loadingBar"></div>
+		</div>
+		<div id="tooltip"></div>
 		<div>
 			<canvas class="webgl"></canvas>
 			<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r124/three.min.js"></script>
-			<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
 			<script src="https://unpkg.com/three@0.126.0/examples/js/controls/OrbitControls.js"></script>
 			<script src="./script.js"></script>
 		</div>
