@@ -49,7 +49,9 @@ static class ConvertToRender
 		}
 
 		string voxelJson = JsonConvert.SerializeObject(voxels);
-		File.WriteAllText($"../../../src/Render/Voxels/{id}{((id == "") ? "temp" : "")}.voxels.json", voxelJson);
+		string voxelPath = $"../../../src/Render/Voxels/{id}{((id == "") ? "temp" : "")}.voxels.json";
+		File.WriteAllText(voxelPath, voxelJson);
+		Console.WriteLine($"[INFO] Wrote voxeldata to {voxelPath}");
 	}
 
 	public static void Convert(BlockChunk chunk, Pos_3D? mut=null, string id="")

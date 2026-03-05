@@ -167,22 +167,22 @@ class RegionFile
 
 			Chunk newChunk = new Chunk(segment);
 			newChunk.CalculateWorldPos(this.chunkRegion, i);
-			newChunk.GetBlockData();
-			if (newChunk.blocks is not null) //&& i < 255)
-			{
-				//Console.WriteLine(i);
-				//blocks.AddRange(newChunk.blocks);
-				topBlocks.AddRange(newChunk.topBlocks);
-			}
+			// newChunk.GetBlockData();
+			// if (newChunk.blocks is not null) //&& i < 255)
+			// {
+			// 	//Console.WriteLine(i);
+			// 	//blocks.AddRange(newChunk.blocks);
+			// 	topBlocks.AddRange(newChunk.topBlocks);
+			// }
 			chunks[i] = newChunk;
 
 			//string json = JsonConvert.SerializeObject(segment.JSONObj);
 			//File.WriteAllText($"../../../jsondump/jsondump_{regionPos.x}_{regionPos.z}_{chunks[i].chunkPos.x}_{chunks[i].chunkPos.z}.temp.json", json);
 		}
 
-		Console.WriteLine($"[INFO] Finished reading Blockdata. Read {blocks.Count} blocks");
+		Console.WriteLine($"[INFO] Finished reading Blockdata. Read {blocks.Count + topBlocks.Count} blocks");
 		//ConvertToRender.ConvertToRender.Convert(blocks.ToArray(), "chunk");
-		ConvertToRender.ConvertToRender.Convert(topBlocks.ToArray(), "top");
+		//ConvertToRender.ConvertToRender.Convert(topBlocks.ToArray(), "top");
 		this.chunks = chunks;
 	}
 
