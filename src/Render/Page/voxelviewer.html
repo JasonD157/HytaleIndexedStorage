@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Test Chunk Viewer</title>
+		<link rel="stylesheet" href="./style.css">
+	</head>
+		
+	<body>
+		<div class="PageNavs">
+			<nav class="PageNavs">
+				<ol>
+					<li class="PageNav">Voxel Viewer</li>
+					<li class="PageNav">|</li>
+					<li class="PageNav"><a href="./worldmap.html">World Map</a></li>
+				</ol>
+			</nav>
+		</div>
+		<div>
+			<input type="file" id="fileInput" accept=".json">
+
+			<input type="number" id="x" value="1">
+			<input type="number" id="y" value="1">
+			<input type="number" id="z" value="1">
+			<input type="button" id="goto" value="Goto">
+		</div>
+		<div id="loadingContainer">
+			<div id="loadingBar"></div>
+		</div>
+		<div>
+			<canvas class="webgl"></canvas>
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r124/three.min.js"></script>
+			<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+			<script src="https://unpkg.com/three@0.126.0/examples/js/controls/OrbitControls.js"></script>
+			<script src="./voxelscript.js"></script>
+		</div>
+	</body>
+</html>
