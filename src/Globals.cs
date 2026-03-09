@@ -19,9 +19,33 @@ public static class Globals
 	public const uint MAGIC_SIZE = 20;
 	//Magic string prepended to every region.bin file.
 	public static readonly char[] MAGIC = "HytaleIndexedStorage".ToCharArray();
+
+	public enum ChunkSide
+	{
+		TOP,
+		BOTTOM,
+		LEFT,
+		RIGHT
+	}
+
+	public static readonly Dictionary<ChunkSide, Pos_3D> matchConversions = new()
+	{
+		[ChunkSide.TOP] = 		new Pos_3D( 0,  0,  1),
+		[ChunkSide.BOTTOM] = 	new Pos_3D( 0,  0, -1),
+		[ChunkSide.LEFT] = 		new Pos_3D(-1,  0,  0),
+		[ChunkSide.RIGHT] = 	new Pos_3D( 1,  0,  0)
+	};
+
+	public static readonly Dictionary<ChunkSide, ChunkSide> sideInversion = new()
+	{
+		[ChunkSide.TOP] = 		ChunkSide.BOTTOM,
+		[ChunkSide.BOTTOM] = 	ChunkSide.TOP,
+		[ChunkSide.LEFT] = 		ChunkSide.RIGHT,
+		[ChunkSide.RIGHT] = 	ChunkSide.LEFT
+	};
 }
 
-class Pos_2D
+public class Pos_2D
 {
 	public int x;
 	public int z;
@@ -36,7 +60,7 @@ class Pos_2D
 	}
 }
 
-class Pos_3D
+public class Pos_3D
 {
 	public int x;
 	public int y;

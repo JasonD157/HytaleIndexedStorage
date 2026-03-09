@@ -1,17 +1,10 @@
+using System.Numerics;
+using System.Text.RegularExpressions;
 using BlockHelper;
+using Globals;
 using static Globals.Globals;
 
 namespace Corruption;
-
-enum ChunkSide
-{
-	TOP,
-	BOTTOM,
-	LEFT,
-	RIGHT
-}
-
-
 
 class SideMap
 {
@@ -97,8 +90,62 @@ class SideMap
 
 static class SideMatcher
 {
-	public static int Match(Block[] side1, Block[] side2)
+	public static Dictionary<ChunkSide, double> MatchChunk(Dictionary<ChunkSide, Block[]> validChunk, Dictionary<ChunkSide, Block[]> invalidChunk)
 	{
-		return 0;
+		//Confidence score of 100: perfect match of top blocks.
+
+		//Keep in mind that only one side will match as two chunks only have one intersecting plane.
+
+		Dictionary<ChunkSide, double> matchScores = new(); 
+
+		foreach ((ChunkSide side, Block[] blocks) in validChunk)
+		{
+			Block[] correspondingSide = invalidChunk[sideInversion[side]];
+
+			matchScores[side] = MatchBlocks(blocks, correspondingSide);
+		}
+
+		return matchScores;
+	}
+
+	public static double MatchBlocks(Block[] blocks, Block[] toMatch)
+	{
+		double totalConfidence = 0;
+
+		for (int i = 0; i < CHUNK_SIZE; i++)
+		{
+			totalConfidence += MatchBlock(blocks[i], toMatch[i]);
+		}
+
+		double confidence = totalConfidence/ CHUNK_SIZE; //Average the confidence scores
+		return confidence; 
+	}
+
+	//0-1 match based on Y value similarity.
+	private static double MatchYValues(int first, int second)
+	{
+		const double SENSITIVITY = 0.075;
+
+		double result = 1 / (
+			SENSITIVITY *
+			Math.Pow(first - second, 2)
+			+ 1
+		);
+
+		return result;
+	}
+
+	private static double MatchBlock(Block first, Block second)
+	{
+		string type1 = first.blockName;
+		string type2 = second.blockName;
+
+		const double confidenceIfNoTypeMatch = 0.5;
+
+		double result = type1 == type2 ? 1 : confidenceIfNoTypeMatch;
+
+		result *= MatchYValues(first.pos.y, second.pos.y);
+		
+		return result;
 	}
 }

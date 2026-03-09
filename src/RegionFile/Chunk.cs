@@ -10,6 +10,7 @@ namespace ChunkLib;
 
 class Chunk
 {
+	public Guid guid;
 	public bool IS_EMPTY = false;
 	public bool IS_CORRUPTED = false;
 	
@@ -24,6 +25,8 @@ class Chunk
 
 	public Chunk(Segment homeSegment)
 	{
+		guid = Guid.NewGuid();
+		
 		this.homeSegment = homeSegment;
 
 		if (!homeSegment.IS_EMPTY)
