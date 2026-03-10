@@ -39,6 +39,7 @@ class RegionFile
 	private uint[] _blob_indexes;
 
 	public Segment[] rawSegments;
+	public Dictionary<uint, Segment> corruptedSegments;
 	public Chunk[] chunks;
 
 	public string fileName;
@@ -121,10 +122,11 @@ class RegionFile
 			if (success) validIndexes[i] = index;
 		}
 
-		this.rawSegments = segments;
-		Dictionary<uint, Segment> corrIndexes = _corruptionHelper.IdentifyCorruptedSegments();
+		rawSegments = segments;
+		corruptedSegments = _corruptionHelper.IdentifyCorruptedSegments();
+
 		_corruptionHelper.PrintByteSpaces();
-		Console.WriteLine($"[INFO] Potentially recovered indexes: {corrIndexes.Count}");
+		Console.WriteLine($"[INFO] Potentially recovered indexes: {corruptedSegments.Count}");
 	}
 
 	private (bool, Segment) ReadBlob(uint index)
@@ -161,23 +163,41 @@ class RegionFile
 		Chunk[] chunks = new Chunk[_BLOB_COUNT];
 		List<Block> blocks = new(); 
 		List<Block> topBlocks = new(); 
+
+		SideMap sideMap = new SideMap();
+
 		for (int i = 0; i < _BLOB_COUNT; i++)
 		{
 			Segment segment = rawSegments[i];
-
 			Chunk newChunk = new Chunk(segment);
-			newChunk.CalculateWorldPos(this.chunkRegion, i);
-			// newChunk.GetBlockData();
-			// if (newChunk.blocks is not null) //&& i < 255)
-			// {
-			// 	//Console.WriteLine(i);
-			// 	//blocks.AddRange(newChunk.blocks);
-			// 	topBlocks.AddRange(newChunk.topBlocks);
-			// }
-			chunks[i] = newChunk;
 
-			//string json = JsonConvert.SerializeObject(segment.JSONObj);
-			//File.WriteAllText($"../../../jsondump/jsondump_{regionPos.x}_{regionPos.z}_{chunks[i].chunkPos.x}_{chunks[i].chunkPos.z}.temp.json", json);
+			newChunk.CalculateWorldPos(this.chunkRegion, i);
+			newChunk.GetBlockData();
+
+			if (!newChunk.IS_EMPTY)
+			{
+				sideMap.AddSidesFromTopLayer(newChunk.guid, newChunk.topBlocks);
+			}
+
+			chunks[i] = newChunk;
+		}
+
+		foreach ((uint index, Segment segment) in corruptedSegments)
+		{
+			try
+			{
+				Chunk recoveredChunk = new Chunk(segment);
+				recoveredChunk.GetBlockData();
+				if (!recoveredChunk.IS_EMPTY)
+				{
+					sideMap.MatchChunk(recoveredChunk.topBlocks);
+					throw new Exception("Valid");
+				}
+			}
+			catch
+			{
+				throw new Exception();
+			}
 		}
 
 		Console.WriteLine($"[INFO] Finished reading Blockdata. Read {blocks.Count + topBlocks.Count} blocks");

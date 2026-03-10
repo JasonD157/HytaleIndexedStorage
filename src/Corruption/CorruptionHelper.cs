@@ -221,7 +221,6 @@ class CorruptionHelper
 		do
 		{
 			IdentifyCorruptIndexes(recoveredIndexes);
-
 		}
 		while (AssignCorruptedHeaders());
 

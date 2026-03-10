@@ -8,19 +8,28 @@ namespace Corruption;
 
 class SideMap
 {
+	const double MATCH_TRESHOLD = 70;
+
 	private Dictionary<Guid, Dictionary<ChunkSide, Block[]>> sideMap;
     public SideMap()
 	{
 		sideMap = new();
 	}
 
-	public void MatchSide(Block[] matchArray)
+	public void MatchChunk(Block[] chunkToMatch)
 	{
 		var map = new Dictionary<ChunkSide, Block[]>();
 		InitMap(map);
-		ConvertArrayToSides(map, matchArray);
+		ConvertArrayToSides(map, chunkToMatch);
 
-
+		foreach ((Guid guid, var chunkSides) in sideMap)
+		{
+			var matchResults = SideMatcher.MatchChunk(map, chunkSides);
+			foreach ((ChunkSide side, double confidence) in matchResults)
+			{
+				if (confidence >= MATCH_TRESHOLD) Console.WriteLine($"MATCH!!! Chunk {guid}, side {side} with a score of {confidence}");
+			}
+		}
 	}
 
     public void AddSidesFromTopLayer(Guid guid, Block[] blocks) //Only input blockarray which has i mapped to its proper world position
@@ -49,8 +58,6 @@ class SideMap
 			uint z = i / 32;
 
 			map[ChunkSide.TOP][x] = array[i];
-
-			Console.WriteLine($"TOP: {x}, {z}");
 		}
 
         // Bottom
@@ -60,8 +67,6 @@ class SideMap
 			uint z = i / 32;
 
 			map[ChunkSide.BOTTOM][x] = array[i];
-
-			Console.WriteLine($"BOTTOM: {x}, {z}");
 		}
 
         // Left
@@ -71,8 +76,6 @@ class SideMap
 			uint z = i / 32;
 
 			map[ChunkSide.LEFT][z] = array[i];
-			
-			Console.WriteLine($"LEFT: {x}, {z}");
 		}
 
 		// Right
@@ -82,8 +85,6 @@ class SideMap
 			uint z = i / 32;
 
 			map[ChunkSide.RIGHT][z] = array[i];
-			
-			Console.WriteLine($"RIGHT: {x}, {z}");
 		}
 	}
 }
@@ -108,7 +109,7 @@ static class SideMatcher
 		return matchScores;
 	}
 
-	public static double MatchBlocks(Block[] blocks, Block[] toMatch)
+	private static double MatchBlocks(Block[] blocks, Block[] toMatch)
 	{
 		double totalConfidence = 0;
 
