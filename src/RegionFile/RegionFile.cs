@@ -177,6 +177,7 @@ class RegionFile
 			if (!newChunk.IS_EMPTY)
 			{
 				sideMap.AddSidesFromTopLayer(newChunk.guid, newChunk.topBlocks);
+				topBlocks.AddRange(newChunk.topBlocks);
 			}
 
 			chunks[i] = newChunk;
@@ -191,7 +192,6 @@ class RegionFile
 				if (!recoveredChunk.IS_EMPTY)
 				{
 					sideMap.MatchChunk(recoveredChunk.topBlocks);
-					throw new Exception("Valid");
 				}
 			}
 			catch
@@ -202,7 +202,7 @@ class RegionFile
 
 		Console.WriteLine($"[INFO] Finished reading Blockdata. Read {blocks.Count + topBlocks.Count} blocks");
 		//ConvertToRender.ConvertToRender.Convert(blocks.ToArray(), "chunk");
-		//ConvertToRender.ConvertToRender.Convert(topBlocks.ToArray(), "top");
+		ConvertToRender.ConvertToRender.Convert(topBlocks.ToArray(), "top");
 		this.chunks = chunks;
 	}
 

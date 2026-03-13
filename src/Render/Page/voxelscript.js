@@ -189,6 +189,89 @@ document.getElementById("goto").onclick = function () {
 	moveCamTo(x,y,z)
 };
 
+// Compass
+const compassCanvas = document.getElementById('compassCanvas');
+const compassCtx = compassCanvas.getContext('2d');
+const CW = compassCanvas.width;
+const CH = compassCanvas.height;
+const CR = CW / 2;
+
+function drawCompass() {
+    compassCtx.clearRect(0, 0, CW, CH);
+
+    // Background circle
+    compassCtx.beginPath();
+    compassCtx.arc(CR, CR, CR - 2, 0, Math.PI * 2);
+    compassCtx.fillStyle = 'rgba(15, 17, 30, 0.82)';
+    compassCtx.fill();
+    compassCtx.strokeStyle = 'rgba(255,255,255,0.12)';
+    compassCtx.lineWidth = 1.5;
+    compassCtx.stroke();
+
+    // Get camera's horizontal look direction (yaw only)
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    // Angle of camera in XZ plane (yaw): atan2(x, z) gives angle from +Z axis
+    const yaw = Math.atan2(dir.x, dir.z);
+
+    // North is +Z (0,0,1), West is -X (-1,0,0)
+    // Cardinal directions as angles from +Z axis (clockwise in screen space):
+    // N: 0, E: π/2, S: π, W: -π/2
+    const cardinals = [
+        { label: 'N', angle: 0,         color: '#ff4d4d', bold: true },
+        { label: 'E', angle: Math.PI / 2, color: '#aab8d4', bold: false },
+        { label: 'S', angle: Math.PI,    color: '#aab8d4', bold: false },
+        { label: 'W', angle: -Math.PI / 2, color: '#5ba4ff', bold: true },
+    ];
+
+    const innerR = CR - 18;
+
+    // Tick marks
+    for (let i = 0; i < 16; i++) {
+        const tickAngle = (i / 16) * Math.PI * 2;
+        const screenAngle = tickAngle - yaw - Math.PI; // camera yaw offset
+        const isCardinal = i % 4 === 0;
+        const tickLen = isCardinal ? 10 : 5;
+        const r1 = innerR - (isCardinal ? 2 : 0);
+        const r2 = r1 - tickLen;
+        const cos = Math.cos(screenAngle), sin = Math.sin(screenAngle);
+        compassCtx.beginPath();
+        compassCtx.moveTo(CR + cos * r1, CR + sin * r1);
+        compassCtx.lineTo(CR + cos * r2, CR + sin * r2);
+        compassCtx.strokeStyle = isCardinal ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)';
+        compassCtx.lineWidth = isCardinal ? 1.5 : 1;
+        compassCtx.stroke();
+    }
+
+    // Cardinal labels
+    const labelR = innerR - 20;
+    compassCtx.textAlign = 'center';
+    compassCtx.textBaseline = 'middle';
+    for (const c of cardinals) {
+        const screenAngle = c.angle - yaw - Math.PI;
+        const lx = CR + Math.cos(screenAngle) * labelR;
+        const ly = CR + Math.sin(screenAngle) * labelR;
+
+        compassCtx.font = c.bold ? 'bold 18px monospace' : '14px monospace';
+        compassCtx.fillStyle = c.color;
+        // Subtle glow for N and W
+        if (c.bold) {
+            compassCtx.shadowColor = c.color;
+            compassCtx.shadowBlur = 8;
+        } else {
+            compassCtx.shadowBlur = 0;
+        }
+        compassCtx.fillText(c.label, lx, ly);
+        compassCtx.shadowBlur = 0;
+    }
+
+    // Center dot
+    compassCtx.beginPath();
+    compassCtx.arc(CR, CR, 3.5, 0, Math.PI * 2);
+    compassCtx.fillStyle = 'rgba(255,255,255,0.6)';
+    compassCtx.fill();
+}
+
 // Animation
 const tick = () => {
 	const direction = new THREE.Vector3();
@@ -223,6 +306,7 @@ const tick = () => {
 	}
     controls.update()
     renderer.render(scene, camera)
+    drawCompass()
     window.requestAnimationFrame(tick)
 }
 

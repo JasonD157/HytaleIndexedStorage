@@ -8,12 +8,14 @@ namespace Corruption;
 
 class SideMap
 {
-	const double MATCH_TRESHOLD = 70;
+	const double MATCH_TRESHOLD = 99;
 
 	private Dictionary<Guid, Dictionary<ChunkSide, Block[]>> sideMap;
+	private Dictionary<Guid, Block[]> chunkLookup;
     public SideMap()
 	{
 		sideMap = new();
+		chunkLookup = new();
 	}
 
 	public void MatchChunk(Block[] chunkToMatch)
@@ -21,19 +23,35 @@ class SideMap
 		var map = new Dictionary<ChunkSide, Block[]>();
 		InitMap(map);
 		ConvertArrayToSides(map, chunkToMatch);
-
-		foreach ((Guid guid, var chunkSides) in sideMap)
+		double highest = 0;
+		foreach ((Guid guid, Dictionary<ChunkSide, Block[]> chunkSides) in sideMap)
 		{
 			var matchResults = SideMatcher.MatchChunk(map, chunkSides);
+
 			foreach ((ChunkSide side, double confidence) in matchResults)
 			{
-				if (confidence >= MATCH_TRESHOLD) Console.WriteLine($"MATCH!!! Chunk {guid}, side {side} with a score of {confidence}");
+				if (confidence > highest)
+				{
+					highest = confidence;
+				}
+
+				if (confidence >= MATCH_TRESHOLD / 100)
+				{
+					Console.WriteLine($"MATCH!!! Chunk {guid}, side {side} with a score of {confidence}");
+					ConvertToRender.ConvertToRender.Convert(chunkToMatch, $"matchedChunkTo{guid}");
+					ConvertToRender.ConvertToRender.Convert(chunkLookup[guid], $"{guid}");
+					//throw new Exception();
+				}
 			}
+
+
 		}
+		Console.WriteLine($"Highest confidence score: {highest}");
 	}
 
     public void AddSidesFromTopLayer(Guid guid, Block[] blocks) //Only input blockarray which has i mapped to its proper world position
-    {
+	{
+		chunkLookup.Add(guid, blocks);
 		sideMap.Add(guid, new Dictionary<ChunkSide, Block[]>());
 		var map = sideMap[guid];
 
@@ -111,6 +129,7 @@ static class SideMatcher
 
 	private static double MatchBlocks(Block[] blocks, Block[] toMatch)
 	{
+		//Console.WriteLine("----------------------------Start Match");
 		double totalConfidence = 0;
 
 		for (int i = 0; i < CHUNK_SIZE; i++)
@@ -118,7 +137,8 @@ static class SideMatcher
 			totalConfidence += MatchBlock(blocks[i], toMatch[i]);
 		}
 
-		double confidence = totalConfidence/ CHUNK_SIZE; //Average the confidence scores
+		double confidence = totalConfidence / CHUNK_SIZE; //Average the confidence scores
+		//Console.WriteLine($"----------------------------End Match {confidence}");
 		return confidence; 
 	}
 
@@ -141,12 +161,12 @@ static class SideMatcher
 		string type1 = first.blockName;
 		string type2 = second.blockName;
 
-		const double confidenceIfNoTypeMatch = 0.5;
+		const double confidenceIfNoTypeMatch = 0.25;
 
-		double result = type1 == type2 ? 1 : confidenceIfNoTypeMatch;
+		double result = (type1 == type2) ? 1 : confidenceIfNoTypeMatch;
 
 		result *= MatchYValues(first.pos.y, second.pos.y);
-		
+		//Console.WriteLine($"Matching block {type1} to {type2}: {result}");
 		return result;
 	}
 }
