@@ -171,7 +171,7 @@ class RegionFile
 			Segment segment = rawSegments[i];
 			Chunk newChunk = new Chunk(segment);
 
-			newChunk.CalculateWorldPos(this.chunkRegion, i);
+			newChunk.CalculateWorldPos(chunkRegion, i);
 			newChunk.GetBlockData();
 
 			if (!newChunk.IS_EMPTY)
